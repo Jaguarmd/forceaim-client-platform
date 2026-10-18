@@ -1,0 +1,75 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/"
+  to = "/login"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/api"
+  to = "/.netlify/functions/forceaim-api/api"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/forceaim-api/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/admin"
+  to = "/.netlify/functions/forceaim-api/admin"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/.netlify/functions/forceaim-api/admin/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/portal"
+  to = "/.netlify/functions/forceaim-api/portal"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/portal/*"
+  to = "/.netlify/functions/forceaim-api/portal/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/login"
+  to = "/.netlify/functions/forceaim-api/login"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/invite"
+  to = "/.netlify/functions/forceaim-api/invite"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/reset"
+  to = "/.netlify/functions/forceaim-api/reset"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/favicon.ico"
+  to = "/favicon.svg"
+  status = 200
