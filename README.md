@@ -28,7 +28,8 @@ Open `http://127.0.0.1:4174/login`. `npm run dev` is an alias for the local Node
 ## Create and configure Supabase
 
 1. Create a new Supabase project. Copy the project URL, anon/publishable key, and service-role key from its API settings.
-2. Apply `supabase/migrations/202610170001_platform.sql` using the Supabase SQL Editor or Supabase CLI. This creates the platform tables, enables RLS, and creates the private `client-videos` bucket and policies.
+2. Apply the migrations in order using the Supabase SQL Editor or Supabase CLI: first `supabase/migrations/202610170001_platform.sql`, then `supabase/migrations/20261020083943_booking_and_instagram_metrics.sql`. The first creates platform tables, RLS, and private storage; the second adds tracked booking links/clicks, Calendly booking events, and additional metric columns. The second migration has already been applied to the connected Supabase project.
+   The existing project’s original schema was applied manually and is not recorded in Supabase’s migration history. Do not run a full `supabase db push` against that existing project until the original migration history is reconciled; this added migration is recorded as `20261020083943`.
 3. In Authentication → URL Configuration, set the Site URL to your Netlify site URL and add redirect URLs for `/invite` and `/reset` on that site, plus `http://localhost:4174/invite` and `http://localhost:4174/reset` for local development.
 4. Configure an SMTP provider in Supabase Auth before inviting clients or sending password reset email. Email is sent by Supabase Auth; this app does not claim to send email itself.
 5. Keep the bucket private and set its allowed size to fit the `MAX_VIDEO_SIZE_MB` value and your Supabase plan. Allowed upload types are MP4 and MOV (`video/mp4` and `video/quicktime`).
@@ -42,6 +43,7 @@ Required environment variables (set in `.env` locally and in Netlify for product
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only service-role key; never expose it in browser code |
 | `APP_URL` | Local origin for local work, or exact Netlify site origin in production |
 | `MAX_VIDEO_SIZE_MB` | Optional upload cap; defaults to 500 MB and must not exceed the Supabase bucket/plan limit |
+| `CALENDLY_WEBHOOK_SIGNING_KEY` | Optional server-only signing key from the Calendly webhook subscription; enables verified booking and cancellation events |
 
 `SUPABASE_SERVICE_ROLE_KEY` is needed for invitations, notification/admin actions, and issuing privileged signed upload URLs. Do not set it as a `VITE_` or other browser-exposed variable.
 
@@ -78,7 +80,9 @@ Sign in at `/login`; the app routes administrator accounts to `/admin`.
 ## Calendar and performance
 
 - Admins create and schedule entries at `/admin/calendar`. Clients see only their own entries at `/portal/calendar`. A `Scheduled`/`Published` status is a workflow record; it does not publish to Instagram.
-- Admins add manually reported follower and video metrics at `/admin/performance`. The client sees dated records and charts at `/portal/results`. The platform does not fabricate or automatically fetch Instagram analytics.
+- Admins add manually reported follower snapshots, follows/unfollows, profile link taps, engagement, views, reach, likes, comments, shares, saves, leads, and calls at `/admin/performance`. Clients see dated results and trends at `/portal/results`. Instagram insights are manual in this release; connecting an Instagram account alone does not sync those metrics. Use Instagram's current **Views** metric for recent content rather than deprecated impressions.
+- Admins can set a client's Calendly destination in **Performance Reports → Tracked Calendly booking link**. The portal generates a public `/api/book/<client-id>` link; put that link in the client's Instagram bio or CTA. Each redirect is recorded as a click (not a unique person), then the visitor is sent to the configured Calendly page. The client sees click totals and, once webhooks are configured, confirmed active bookings. The system does not store invitee names or email addresses.
+- To count confirmed Calendly bookings automatically, create a Calendly webhook subscription for `invitee.created` and `invitee.canceled`, with `scheduled_events:read` and `webhooks:write` scopes. Set the callback to `https://<your-netlify-site>/api/webhooks/calendly`, then copy the webhook signing key into Netlify as `CALENDLY_WEBHOOK_SIGNING_KEY` and redeploy. The endpoint verifies the signature and a short replay window. The app only matches bookings that carry the tracked link's `utm_content`; bookings made through other URLs are not attributed. Creating the webhook subscription requires your Calendly developer account; the application does not create it automatically.
 
 ## Prepare a new GitHub repository and Netlify site
 
@@ -95,7 +99,7 @@ git push -u origin main
 
 1. Upload/push the contents of this folder to a new, empty GitHub repository. Keep `netlify.toml` at the repository root.
 2. In Netlify, create a site from that repository and deploy its `main` branch. The config sets Node 24, `npm run build`, `dist` as the publish directory, and `netlify/functions` as the Functions directory.
-3. Set the five environment variables listed above in Netlify site environment settings. Set `APP_URL` to the site’s exact HTTPS origin, and configure the same origin in Supabase Auth URL settings.
+3. Set the required environment variables listed above in Netlify site environment settings. Set `APP_URL` to the site's exact HTTPS origin, and configure the same origin in Supabase Auth URL settings. Add `CALENDLY_WEBHOOK_SIGNING_KEY` only after creating the Calendly subscription.
 4. Trigger a deploy after saving variables. Check the deploy log and the Function logs for `forceaim-api`.
 5. Verify `/login`, sign in as admin, invite a test client, and complete one upload/review cycle. Create two client accounts and confirm each sees only its own workspace and files.
 
