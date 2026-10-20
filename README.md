@@ -44,8 +44,25 @@ Required environment variables (set in `.env` locally and in Netlify for product
 | `APP_URL` | Local origin for local work, or exact Netlify site origin in production |
 | `MAX_VIDEO_SIZE_MB` | Optional upload cap; defaults to 500 MB and must not exceed the Supabase bucket/plan limit |
 | `CALENDLY_WEBHOOK_SIGNING_KEY` | Optional server-only signing key from the Calendly webhook subscription; enables verified booking and cancellation events |
+| `META_APP_ID` | Meta Developer App ID; server-side Function variable |
+| `META_APP_SECRET` | Meta Developer App secret; server-side Function variable only |
+| `META_REDIRECT_URI` | Exact OAuth callback URL registered with Meta, for example `https://client-workspace.netlify.app/api/meta/callback` |
+| `INSTAGRAM_TOKEN_ENCRYPTION_KEY` | Base64 encoding of a random 32-byte key used to encrypt Instagram access tokens at rest |
 
 `SUPABASE_SERVICE_ROLE_KEY` is needed for invitations, notification/admin actions, and issuing privileged signed upload URLs. Do not set it as a `VITE_` or other browser-exposed variable.
+
+## Connect a client's Instagram account
+
+Instagram account connections are initiated from the agency admin workspace. Open `/admin/clients`, select the client, open the **Instagram** section, and choose **Connect Instagram through Meta**. The account owner must sign in on Instagram and grant access; the portal never asks for an Instagram password or security code. The returned account and encrypted access token are associated with the selected client workspace. Clients can view their connection status, but integration controls remain with the agency.
+
+Before using the button:
+
+1. Create/configure a Meta Developer App and enable **Instagram API with Instagram Login** for eligible professional accounts. Configure the OAuth redirect URI as exactly `https://client-workspace.netlify.app/api/meta/callback` (or your own site's `/api/meta/callback`) in Meta and set the same exact value in `META_REDIRECT_URI`.
+2. Add `META_APP_ID`, `META_APP_SECRET`, `META_REDIRECT_URI`, and `INSTAGRAM_TOKEN_ENCRYPTION_KEY` to Netlify's server-side environment for Functions. Generate the encryption key with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Never use the Meta secret, encryption key, or Supabase service-role key in frontend code.
+3. For local use, set `META_REDIRECT_URI=http://localhost:4174/api/meta/callback` and add that exact callback URL to the Meta app. Use a local `.env` file only.
+4. Redeploy the Netlify site after setting variables. Then use **Connect Instagram through Meta** from the chosen client's admin workspace.
+
+This connection currently requests only `instagram_business_basic` and reads the authorized account's ID and username. It does not publish content or automatically sync Instagram insights. Meta app mode, tester roles, review, and permissions can affect who is allowed to authorize; complete any setup Meta requires for your app before treating the live connection as available.
 
 ## Create the first administrator
 
